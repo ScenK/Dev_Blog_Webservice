@@ -2,7 +2,9 @@
 import datetime
 from mongoengine import *
 
-connect('dev_blog2')
+from config import SETTINGS
+
+connect(SETTINGS['database'])
 
 class User(Document):
     name         = StringField(max_length=50, required=True)

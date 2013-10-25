@@ -1,0 +1,6 @@
+# -*- coding: utf-8 -*-
+
+SETTINGS = dict (
+    database = 'dev_blog2',
+    debug = True
+)
