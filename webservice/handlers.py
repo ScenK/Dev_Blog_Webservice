@@ -16,8 +16,8 @@ class DiaryListHandler(APIHandler):
         Return:
             diaries: json
         """
-        diaries = Diary.objects.order_by('-publish_time')[(int(page_num) - 1)*5
-                                                          :int(page_num) * 5]
+        diaries = Diary.objects.order_by('-publish_time')[(int(page_num) - 1)*10
+                                                          :int(page_num) * 10]
         d = diaries.to_json()
         self.finish(d)
 
