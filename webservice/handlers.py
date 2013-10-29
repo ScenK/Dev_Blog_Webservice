@@ -66,7 +66,19 @@ class CategoryDetailHandler(APIHandler):
         """
         category = Category.objects(pk=category_id).first()
 
-        d = category.to_json()
+        category_json = json.loads(category.to_json())
+
+        diaries = []
+
+        for c in category_json['diaries']:
+            diary = Diary.objects(pk=c['$oid']).first()
+
+            diaries.append(json.loads(diary.to_json()))
+
+        category_json['diaries'] = diaries
+
+        d = category_json
+
         self.finish(d)
 
 
