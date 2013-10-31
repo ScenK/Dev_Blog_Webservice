@@ -15,4 +15,6 @@ urls = [
     (r'/v1/gallery/detail/([0-9a-zA-Z]+)', GalleryDetailHandler),
 
     (r'/v1/user/profile', UserProfileHandler),
+
+    (r'/v1/comment/add', CommentAddHandler),
 ]

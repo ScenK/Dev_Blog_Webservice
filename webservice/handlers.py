@@ -163,3 +163,52 @@ class UserProfileHandler(APIHandler):
         del d['password']
 
         self.finish(d)
+
+
+class CommentAddHandler(APIHandler):
+    """ Comment Add AJAX Post Action.
+
+    designed for ajax post and send reply email for admin
+
+    Args:
+        username: guest_name
+        did: diary ObjectedId
+        email: guest_email
+        content: comment content
+
+    Return:
+        email_status: success
+    """
+    def get(self, *args):
+        did = self.get_argument('did')
+        name = self.get_argument('username')
+        email = self.get_argument('email')
+        content = self.get_argument('comment')
+
+
+        diary = Diary.objects(pk=did)
+        diary_title = diary[0].title
+
+        commentEm = CommentEm(
+                    author = name,
+                    content = content,
+                    email = email
+                )
+        diary.update_one(push__comments=commentEm)
+
+        comment = Comment(content=content)
+        comment.diary = diary[0]
+        comment.email = email
+        comment.author = name
+        comment.save(validate=False)
+
+        try:
+            #send_reply_mail(Config.EMAIL,
+                            #Config.MAIN_TITLE + u'收到了新的评论, 请查收',
+                            #content, did, name, diary_title)
+
+            response = json.dumps({'success': 'true'})
+            self.finish(response)
+        except Exception as e:
+            return str(e)
+
