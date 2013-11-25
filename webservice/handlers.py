@@ -3,6 +3,8 @@ import json
 from operator import attrgetter
 
 from webservice.base import APIHandler
+from webservice.tasks.email_tasks import send_email_task
+from config import SETTINGS
 from models import *
 
 class DiaryListHandler(APIHandler):
@@ -203,9 +205,9 @@ class CommentAddHandler(APIHandler):
         comment.save(validate=False)
 
         try:
-            #send_reply_mail(Config.EMAIL,
-                            #Config.MAIN_TITLE + u'收到了新的评论, 请查收',
-                            #content, did, name, diary_title)
+            send_email_task(SETTINGS['EMAIL'],
+                            SETTINGS['MAIN_TITLE'] + u'收到了新的评论, 请查收',
+                            content, did, name, diary_title)
 
             response = json.dumps({'success': 'true'})
             self.finish(response)

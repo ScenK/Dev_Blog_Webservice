@@ -4,7 +4,7 @@ from mongoengine import *
 
 from config import SETTINGS
 
-connect(SETTINGS['database'])
+connect(SETTINGS['DATABASE'])
 
 class User(Document):
     name         = StringField(max_length=50, required=True)

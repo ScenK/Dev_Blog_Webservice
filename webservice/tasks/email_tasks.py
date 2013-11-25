@@ -1,15 +1,9 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright (c) 2012 feilong.me. All rights reserved.
-#
-# @author: Felinx Lee <felinx.lee@gmail.com>
-# Created on  Jun 30, 2012
-#
 
 from celery.task import task
-from webservice.mail import send_email
+from webservice.mail import send_reply_mail
 
 
 @task
-def send_email_task(fr, to, subject, body, html=None, attachments=[]):
-    send_email(fr, to, subject, body, html, attachments)
+def send_email_task(receiver, title, content, did, username, diary_title):
+    send_reply_mail(receiver, title, content, did, username, diary_title)

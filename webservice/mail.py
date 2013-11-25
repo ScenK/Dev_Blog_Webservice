@@ -1,147 +1,61 @@
 # -*- coding: utf-8 -*-
-#
-# Copyright (c) 2012 feilong.me. All rights reserved.
-#
-# @author: Felinx Lee <felinx.lee@gmail.com>
-# Created on  Jun 30, 2012
-#
-
-import re
-import logging
+#!/usr/bin/env python
 import smtplib
-import time
-from datetime import datetime, timedelta
-from email import encoders
+
 from email.mime.multipart import MIMEMultipart
-from email.mime.base import MIMEBase
 from email.mime.text import MIMEText
-from email.utils import COMMASPACE
-from email.utils import formatdate
+from email.Header import Header
+from config import SETTINGS
 
-from tornado.escape import utf8
-from tornado.options import options
+def send_reply_mail(receiver, title, content, did, username, diary_title):
+    sender = SETTINGS['SMTP_USER']
+    password = SETTINGS['SMTP_PASSWORD']
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = Header(title,"UTF-8")
+    msg['From'] = sender
+    msg['To'] = receiver
+    content =  generateHtml(content, did, username, diary_title)
+    part = MIMEText(content, 'html', _charset='UTF-8')
+    msg.attach(part)
 
-__all__ = ("send_email", "EmailAddress")
+    server = smtplib.SMTP(SETTINGS['SMTP_SERVER'], SETTINGS['SMTP_PORT'])
+    server.starttls()
+    server.login(sender,password)
+    server.sendmail(sender, receiver, msg.as_string())
+    server.quit()
 
-# borrow email re pattern from django
-_email_re = re.compile(
-    r"(^[-!#$%&'*+/=?^_`{}|~0-9A-Z]+(\.[-!#$%&'*+/=?^_`{}|~0-9A-Z]+)*"  # dot-atom
-    r'|^"([\001-\010\013\014\016-\037!#-\[\]-\177]|\\[\001-011\013\014\016-\177])*"'  # quoted-string
-    r')@(?:[A-Z0-9]+(?:-*[A-Z0-9]+)*\.)+[A-Z]{2,6}$', re.IGNORECASE)  # domain
+def generateHtml(content, did, username, diary_title):
+    avatar = ''
+    html = u'<table style="width: 100%;"><thead style=" width: 100%;color: #FFF; height: 75px; background-color: #bdcadf; -webkit-box-shadow: 0 1px 1px rgba(255,255,255,.5), inset 0 1px 3px #183357; -moz-box-shadow: 0 1px 1px rgba(255,255,255,.5), inset 0 1px 3px #183357; box-shadow: 0 1px 1px rgba(255,255,255,.5), inset 0 1px 3px #183357; background-image: -webkit-linear-gradient(bottom, #647792, #8d9baf); background-image: -moz-linear-gradient(bottom, #647792, #8d9baf); background-image: -o-linear-gradient(bottom, #647792, #8d9baf); background-image: -ms-linear-gradient(bottom, #647792, #8d9baf); background-image: linear-gradient(to top, #647792, #8d9baf);"><tr><td colspan="2" style="padding: 5px 0 5px 2%;">'
+    html += SETTINGS['MAIN_TITLE']
+    html += u'</td></tr></thead><tbody><tr>'
+    html += u'<td style="width: 25%;padding:10px 0;"><img src="'+ str(avatar) +'"></td><td><b>'
+    html += username
+    html += u'</b>:<br />'
+    html += content
+    html += u'</td></tr><tr style="background: #F2F2F2"><td colspan="2" style="padding: 10px 0 10px 25%; border-top: 1px solid #ccc; border-bottom: 1px solid #ccc;">'
+    html += '<a style="-webkit-transform: translateY(0); -webkit-transition: -webkit-transform .2s ease-out; -moz-transform: translateY(0); -moz-transition: -moz-transform .2s ease-out; transform: translateY(0); transition: -moz-transform .2s ease-out; position: relative; top: 0; background-image: -webkit-linear-gradient(#6389C1, #4369A1); background-image: -moz-linear-gradient(#6389C1, #4369A1); background-image: -linear-gradient(#6389C1, #4369A1); height: 24px; box-shadow: rgba(0, 0, 0, 0.3) 2px 2px 5px 1px; border: 1px solid rgba(53, 85, 131, 0.9); border-radius: 2px; text-shadow: 0 1px rgba(0, 0, 0, 0.5); margin-top: 0px; cursor: pointer; font-size: 13px; font-family: Vavont, Helvetica, sans-serif; text-align: center; line-height: 20px; color: rgba(255, 255, 255, 0.99); box-sizing: border-box; margin-bottom: 5px; display: block; padding: 2px 6px 3px; overflow: hidden; text-decoration: none;width:70px;" href="'
+    html += SETTINGS['SITE_URL']
+    html += u'/diary/'
+    html += str(did)
+    html += u'/'
+    html += diary_title
+    html += u'">返回原文</a></td></tr></tbody>'
+    html += u'<tfoot><tr><td colspan="2" style="font-size:11px;color:#999;padding-top:20px;">Copyright &copy; 2012-2013 Dev_Blog 博客评论邮件提醒。 Written By Scen(he.kang@dev-engine.com)</td></tr></tfoot></table>'
+    return html
 
+def send_error_email(title, error_log):
+    sender = conf['smtp_user']
+    password = conf['smtp_password']
+    msg = MIMEMultipart('alternative')
+    msg['Subject'] = Header(title,"UTF-8")
+    msg['From'] = sender
+    msg['To'] = conf['email']
+    part = MIMEText(error_log, 'html', _charset='UTF-8')
+    msg.attach(part)
 
-def send_email(fr, to, subject, body, html=None, attachments=[]):
-    """Send an email.
-
-    If an HTML string is given, a mulitpart message will be generated with
-    plain text and HTML parts. Attachments can be added by providing as a
-    list of (filename, data) tuples.
-    """
-    # convert EmailAddress to pure string
-    if isinstance(fr, EmailAddress):
-        fr = str(fr)
-    else:
-        fr = utf8(fr)
-    to = [utf8(t) for t in to]
-
-    if html:
-        # Multipart HTML and plain text
-        message = MIMEMultipart("alternative")
-        message.attach(MIMEText(body, "plain"))
-        message.attach(MIMEText(html, "html"))
-    else:
-        # Plain text
-        message = MIMEText(body)
-    if attachments:
-        part = message
-        message = MIMEMultipart("mixed")
-        message.attach(part)
-        for filename, data in attachments:
-            part = MIMEBase("application", "octet-stream")
-            part.set_payload(data)
-            encoders.encode_base64(part)
-            part.add_header("Content-Disposition", "attachment",
-                filename=filename)
-            message.attach(part)
-
-    message["Date"] = formatdate(time.time())
-    message["From"] = fr
-    message["To"] = COMMASPACE.join(to)
-    message["Subject"] = utf8(subject)
-
-    _get_session().send_mail(fr, to, utf8(message.as_string()))
-
-
-class EmailAddress(object):
-    def __init__(self, addr, name=""):
-        assert _email_re.match(addr), "Email address(%s) is invalid." % addr
-
-        self.addr = addr
-        if name:
-            self.name = name
-        else:
-            self.name = addr.split("@")[0]
-
-    def __str__(self):
-        return '%s <%s>' % (utf8(self.name), utf8(self.addr))
-
-
-class _SMTPSession(object):
-    def __init__(self, host, user='', password='', duration=30, tls=False):
-        self.host = host
-        self.user = user
-        self.password = password
-        self.duration = duration
-        self.tls = tls
-        self.session = None
-        self.deadline = datetime.now()
-        self.renew()
-
-    def send_mail(self, fr, to, message):
-        if self.timeout:
-            self.renew()
-
-        try:
-            self.session.sendmail(fr, to, message)
-        except Exception, e:
-            err = "Send email from %s to %s failed!\n Exception: %s!" \
-                % (fr, to, e)
-            logging.error(err)
-            self.renew()
-
-    @property
-    def timeout(self):
-        if datetime.now() < self.deadline:
-            return False
-        else:
-            return True
-
-    def renew(self):
-        try:
-            if self.session:
-                self.session.quit()
-        except Exception:
-            pass
-
-        self.session = smtplib.SMTP(self.host)
-        if self.user and self.password:
-            if self.tls:
-                self.session.starttls()
-
-            self.session.login(self.user, self.password)
-
-        self.deadline = datetime.now() + timedelta(seconds=self.duration * 60)
-
-
-def _get_session():
-    global _session
-    if _session is None:
-        _session = _SMTPSession(options.smtp['host'],
-                                options.smtp['user'],
-                                options.smtp['password'],
-                                options.smtp['duration'],
-                                options.smtp['tls'])
-
-    return _session
-
-_session = None
+    server = smtplib.SMTP(conf['smtp_server'], conf['smtp_port'])
+    server.starttls()
+    server.login(sender,password)
+    server.sendmail(sender, conf['email'], msg.as_string())
+    server.quit()
