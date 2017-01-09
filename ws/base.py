@@ -1,19 +1,12 @@
-# -*- coding: utf-8 -*-
-#
-# Copyright (c) 2012 feilong.me. All rights reserved.
-#
-# @author: Felinx Lee <felinx.lee@gmail.com>
-# Created on  Jun 30, 2012
-#
-
+"""."""
 import traceback
 import logging
 
 from tornado import escape
 from tornado.options import options
 from tornado.web import RequestHandler as BaseRequestHandler, HTTPError
-from webservice import exceptions
-from webservice.tasks import email_tasks
+from .task import email_tasks
+from .exceptions import HTTPAPIError
 
 
 class BaseHandler(BaseRequestHandler):
@@ -94,7 +87,7 @@ class APIHandler(BaseHandler):
             self.set_status(200)  # always return 200 OK for API errors
             self.set_header("Content-Type", "application/json; charset=UTF-8")
             self.finish(str(e))
-        except Exception:
+        except HTTPAPIError:
             logging.error(traceback.format_exc())
             return super(APIHandler, self).write_error(status_code, **kwargs)
 
@@ -107,7 +100,7 @@ class APIHandler(BaseHandler):
             if options.send_error_email:
                 email_tasks.send_email_task.delay(options.email_from,
                                                   options.admins, subject, body)
-        except Exception:
+        except HTTPAPIError:
             logging.error(traceback.format_exc())
 
 
